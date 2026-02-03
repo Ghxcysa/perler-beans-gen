@@ -1,2 +1,2 @@
-# Lego-gen
-Image to LEGO instruction generator
+# perler-beads-gen
+Image to perler beads instruction generator
