@@ -15,7 +15,7 @@ from reportlab.pdfgen import canvas
 from .counts import compute_counts
 from .quantize import QuantizeResult
 from .step_planner import Step
-from .utils import index_to_symbol
+from .utils import index_to_number
 
 
 @dataclass(frozen=True)
@@ -90,7 +90,7 @@ def _legend_entries(quantized: QuantizeResult) -> list[tuple[str, str, str, int]
         count = count_map.get(color.code, 0)
         if count <= 0:
             continue
-        symbol = index_to_symbol(idx)
+        symbol = index_to_number(idx)
         entries.append((symbol, color.code, color.name, count))
     return entries
 
@@ -123,7 +123,7 @@ def write_pattern_pdf(out_path: str, meta: PatternMeta, quantized: QuantizeResul
     start_y = page_h - 1.5 * inch
     line_h = 14
     col_x = [0.75 * inch, 2.0 * inch, 3.2 * inch, 5.2 * inch]
-    c.drawString(col_x[0], start_y, "Symbol")
+    c.drawString(col_x[0], start_y, "No.")
     c.drawString(col_x[1], start_y, "Code")
     c.drawString(col_x[2], start_y, "Name")
     c.drawString(col_x[3], start_y, "Count")
@@ -148,7 +148,7 @@ def write_pattern_pdf(out_path: str, meta: PatternMeta, quantized: QuantizeResul
     origin_x = margin
     origin_y = margin
 
-    symbols = [index_to_symbol(i) for i in range(len(quantized.palette.colors))]
+    symbols = [index_to_number(i) for i in range(len(quantized.palette.colors))]
     for idx, step in enumerate(steps, start=1):
         c.setFont("Helvetica-Bold", 14)
         c.drawString(margin, page_h - 0.75 * inch, f"Step {idx}: {step.name}")

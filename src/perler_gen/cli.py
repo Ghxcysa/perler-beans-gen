@@ -23,6 +23,8 @@ def _parse_args() -> argparse.Namespace:
     parser.add_argument("--steps", choices=["row", "quadrant"], default="row")
     parser.add_argument("--rows-per-step", type=int, default=2)
     parser.add_argument("--export-svg", action="store_true")
+    parser.add_argument("--dither", action="store_true",
+                        help="Enable Floyd-Steinberg dithering.")
     return parser.parse_args()
 
 
@@ -38,7 +40,7 @@ def main() -> None:
     img = resample_to_grid(img, w, h)
 
     palette = load_palette(str(args.palette))
-    quantized = quantize_to_palette(img, palette, max_colors=args.max_colors)
+    quantized = quantize_to_palette(img, palette, max_colors=args.max_colors, dither=args.dither)
 
     counts = compute_counts(quantized.indices, quantized.palette)
 
@@ -62,7 +64,7 @@ def main() -> None:
     write_pattern_pdf(str(pdf_path), meta, quantized, steps)
 
     if args.export_svg:
-        write_svg(str(svg_path), quantized.rgb, cell_size=10)
+        write_svg(str(svg_path), quantized.rgb, quantized.indices, cell_size=10)
 
 
 if __name__ == "__main__":

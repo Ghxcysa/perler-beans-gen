@@ -22,3 +22,8 @@ def index_to_symbol(i: int) -> str:
             break
         n -= 1
     return "".join(reversed(chars))
+
+
+def index_to_number(i: int) -> str:
+    """Map a zero-based index to a 1-based numeric label."""
+    return str(i + 1)
