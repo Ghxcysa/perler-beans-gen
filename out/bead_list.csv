@@ -1,12 +1,21 @@
 color_code,color_name,count
-P01,White,494
-P02,Black,1368
-P03,Light Gray,109
-P04,Dark Gray,144
-P05,Red,74
-P07,Yellow,1
-P12,Blue,52
-P15,Pink,6
-P22,Maroon,50
-P23,Olive,4
-P24,Navy,2
+P01,White,474
+P02,Black,1326
+P03,Light Gray,118
+P04,Dark Gray,173
+P05,Red,50
+P06,Orange,2
+P10,Dark Green,9
+P11,Light Blue,2
+P12,Blue,30
+P13,Dark Blue,6
+P14,Purple,1
+P15,Pink,12
+P16,Brown,20
+P17,Tan,21
+P18,Beige,7
+P19,Teal,9
+P20,Aqua,2
+P22,Maroon,29
+P23,Olive,3
+P24,Navy,10
