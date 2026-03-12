@@ -69,7 +69,4 @@ pytest
 
 # 编译代码
 
-python -m perler_gen.cli \
-  --input /Users/xiaorui/Desktop/Hello_Kitty_character.png \
-  --outdir out/ \
-  --palette assets/palettes/perler_basic.json
+perler-gen --input ./input/\\.png  --outdir out/ --dither --export-svg
