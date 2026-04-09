@@ -34,14 +34,82 @@ def _make_preview_image(quantized_rgb: np.ndarray, max_size: int = 400) -> Image
     return img
 
 
-def _draw_grid(c: canvas.Canvas, origin_x: float, origin_y: float, cell: float, w: int, h: int) -> None:
-    c.setStrokeColorRGB(0.8, 0.8, 0.8)
+def _draw_cells(
+    c: canvas.Canvas,
+    origin_x: float,
+    origin_y: float,
+    cell: float,
+    indices: np.ndarray,
+    mask: np.ndarray,
+    palette_rgb: np.ndarray,
+) -> None:
+    h, w = indices.shape
+    for row in range(h):
+        for col in range(w):
+            if not mask[row, col]:
+                continue
+            r, g, b = palette_rgb[int(indices[row, col])] / 255.0
+            c.setFillColorRGB(float(r), float(g), float(b))
+            x = origin_x + col * cell
+            y = origin_y + (h - 1 - row) * cell
+            c.rect(x, y, cell, cell, fill=1, stroke=0)
+
+
+def _draw_cells_faded(
+    c: canvas.Canvas,
+    origin_x: float,
+    origin_y: float,
+    cell: float,
+    indices: np.ndarray,
+    mask: np.ndarray,
+    palette_rgb: np.ndarray,
+    alpha: float = 0.25,
+) -> None:
+    """Draw already-placed cells at reduced opacity as a placement reference."""
+    c.saveState()
+    c.setFillAlpha(alpha)
+    h, w = indices.shape
+    for row in range(h):
+        for col in range(w):
+            if not mask[row, col]:
+                continue
+            r, g, b = palette_rgb[int(indices[row, col])] / 255.0
+            c.setFillColorRGB(float(r), float(g), float(b))
+            x = origin_x + col * cell
+            y = origin_y + (h - 1 - row) * cell
+            c.rect(x, y, cell, cell, fill=1, stroke=0)
+    c.restoreState()
+
+
+def _draw_grid(
+    c: canvas.Canvas,
+    origin_x: float,
+    origin_y: float,
+    cell: float,
+    w: int,
+    h: int,
+    interval: int = 5,
+) -> None:
+    # Minor grid lines — one per cell, very faint.
+    c.setStrokeColorRGB(0.85, 0.85, 0.85)
+    c.setLineWidth(0.15)
     for i in range(w + 1):
         x = origin_x + i * cell
         c.line(x, origin_y, x, origin_y + h * cell)
     for j in range(h + 1):
         y = origin_y + j * cell
         c.line(origin_x, y, origin_x + w * cell, y)
+
+    # Major grid lines — every ``interval`` cells, darker and thicker for counting.
+    if interval > 0:
+        c.setStrokeColorRGB(0.55, 0.55, 0.55)
+        c.setLineWidth(0.5)
+        for i in range(0, w + 1, interval):
+            x = origin_x + i * cell
+            c.line(x, origin_y, x, origin_y + h * cell)
+        for j in range(0, h + 1, interval):
+            y = origin_y + j * cell
+            c.line(origin_x, y, origin_x + w * cell, y)
 
 
 def _draw_axes(c: canvas.Canvas, origin_x: float, origin_y: float, cell: float, w: int, h: int) -> None:
@@ -95,7 +163,13 @@ def _legend_entries(quantized: QuantizeResult) -> list[tuple[str, str, str, int]
     return entries
 
 
-def write_pattern_pdf(out_path: str, meta: PatternMeta, quantized: QuantizeResult, steps: Iterable[Step]) -> None:
+def write_pattern_pdf(
+    out_path: str,
+    meta: PatternMeta,
+    quantized: QuantizeResult,
+    steps: Iterable[Step],
+    grid_interval: int = 5,
+) -> None:
     page_w, page_h = letter
     c = canvas.Canvas(out_path, pagesize=letter)
 
@@ -149,12 +223,20 @@ def write_pattern_pdf(out_path: str, meta: PatternMeta, quantized: QuantizeResul
     origin_y = margin
 
     symbols = [index_to_number(i) for i in range(len(quantized.palette.colors))]
+    placed_mask = np.zeros((meta.grid_h, meta.grid_w), dtype=bool)
     for idx, step in enumerate(steps, start=1):
         c.setFont("Helvetica-Bold", 14)
         c.drawString(margin, page_h - 0.75 * inch, f"Step {idx}: {step.name}")
-        _draw_grid(c, origin_x, origin_y, cell, meta.grid_w, meta.grid_h)
+        # Draw previously placed cells faded as a placement reference.
+        if placed_mask.any():
+            _draw_cells_faded(c, origin_x, origin_y, cell,
+                              quantized.indices, placed_mask, quantized.palette.rgb_array)
+        # Draw current step cells in full color.
+        _draw_cells(c, origin_x, origin_y, cell, quantized.indices, step.mask, quantized.palette.rgb_array)
+        _draw_grid(c, origin_x, origin_y, cell, meta.grid_w, meta.grid_h, interval=grid_interval)
         _draw_axes(c, origin_x, origin_y, cell, meta.grid_w, meta.grid_h)
         _draw_symbols(c, origin_x, origin_y, cell, quantized.indices, step.mask, symbols)
         c.showPage()
+        placed_mask = placed_mask | step.mask
 
     c.save()

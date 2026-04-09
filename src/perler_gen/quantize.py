@@ -133,11 +133,44 @@ def _direct_lab_match(
     return idx.reshape(h, w), quant_rgb
 
 
+def _majority_vote_filter(indices: np.ndarray, n_passes: int = 1) -> np.ndarray:
+    """Replace isolated pixels with their neighborhood majority color.
+
+    For each cell, if its color differs from the majority of its 8 neighbours,
+    replace it with that majority color.  Repeat for ``n_passes`` iterations.
+    """
+    result = indices.copy()
+    h, w = result.shape
+    for _ in range(n_passes):
+        new = result.copy()
+        for y in range(h):
+            for x in range(w):
+                neighbors: list[int] = []
+                for dy in (-1, 0, 1):
+                    for dx in (-1, 0, 1):
+                        if dy == 0 and dx == 0:
+                            continue
+                        ny, nx = y + dy, x + dx
+                        if 0 <= ny < h and 0 <= nx < w:
+                            neighbors.append(int(result[ny, nx]))
+                if not neighbors:
+                    continue
+                counts: dict[int, int] = {}
+                for v in neighbors:
+                    counts[v] = counts.get(v, 0) + 1
+                majority = max(counts, key=lambda k: counts[k])
+                if majority != int(result[y, x]) and counts[majority] > len(neighbors) // 2:
+                    new[y, x] = majority
+        result = new
+    return result
+
+
 def quantize_to_palette(
     img: Image.Image,
     palette: Palette,
     max_colors: Optional[int] = None,
     dither: bool = False,
+    post_smooth: int = 1,
 ) -> QuantizeResult:
     """Quantize an image to the given palette using LAB Delta E 2000.
 
@@ -163,5 +196,9 @@ def quantize_to_palette(
         indices, rgb = _floyd_steinberg_dither(pixels, palette_rgb, palette_lab)
     else:
         indices, rgb = _direct_lab_match(pixels, palette_rgb, palette_lab)
+
+    if post_smooth > 0:
+        indices = _majority_vote_filter(indices, n_passes=post_smooth)
+        rgb = palette_rgb[indices]
 
     return QuantizeResult(indices=indices, rgb=rgb, palette=reduced_palette)

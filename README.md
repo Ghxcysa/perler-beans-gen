@@ -25,13 +25,11 @@ pip install -r requirements.txt
 ## Quick Start
 Example command (from repo root):
 ```
-python -m perler_gen.cli \
-  --input examples/input/sample1.png \
-  --outdir examples/output/sample1 \
-  --grid 48 48 \
-  --palette assets/palettes/perler_basic.json \
-  --steps row \
-  --rows-per-step 2
+python3 -m perler_gen.cli \
+  --input /Users/xiaorui/Desktop/3cdc5129eb5fc3e89545cd99b4ecb309.jpg \
+  --outdir out --grid 48 48 --max-colors 24 \
+  --steps color \
+  --export-svg --pre-smooth 1.5
 ```
 
 Output files:
@@ -67,6 +65,6 @@ Run tests with:
 pytest
 ```
 
-# 编译代码
 
-perler-gen --input ./input/\\.png  --outdir out/ --dither --export-svg
+
+

@@ -2,6 +2,8 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from typing import Optional
+
 import numpy as np
 
 
@@ -42,8 +44,39 @@ def _quadrant_steps(w: int, h: int) -> list[Step]:
     return steps
 
 
-def plan_steps(w: int, h: int, mode: str, rows_per_step: int = 1) -> list[Step]:
-    """Plan steps in row or quadrant mode."""
+def _color_steps(indices: np.ndarray, palette_size: int) -> list[Step]:
+    """One step per palette color index, in order.
+
+    Each step's mask covers only the cells with that specific color.
+    Colors that are not present in the image are skipped.
+    """
+    steps: list[Step] = []
+    for color_idx in range(palette_size):
+        mask = (indices == color_idx)
+        if not mask.any():
+            continue
+        steps.append(Step(name=f"Color {color_idx + 1}", mask=mask))
+    return steps
+
+
+def plan_steps(
+    w: int,
+    h: int,
+    mode: str,
+    rows_per_step: int = 1,
+    indices: Optional[np.ndarray] = None,
+    palette_size: int = 0,
+) -> list[Step]:
+    """Plan steps in row, quadrant, or color mode.
+
+    Parameters
+    ----------
+    w, h:          Grid dimensions.
+    mode:          'row', 'quadrant', or 'color'.
+    rows_per_step: Used only for mode='row'.
+    indices:       Palette-index array (H x W); required for mode='color'.
+    palette_size:  Number of palette colors; required for mode='color'.
+    """
     if w <= 0 or h <= 0:
         raise ValueError("Grid dimensions must be positive.")
     mode = mode.lower().strip()
@@ -51,4 +84,8 @@ def plan_steps(w: int, h: int, mode: str, rows_per_step: int = 1) -> list[Step]:
         return _row_steps(w, h, rows_per_step)
     if mode == "quadrant":
         return _quadrant_steps(w, h)
-    raise ValueError("Unknown step mode: expected 'row' or 'quadrant'.")
+    if mode == "color":
+        if indices is None:
+            raise ValueError("indices must be provided for mode='color'.")
+        return _color_steps(indices, palette_size)
+    raise ValueError("Unknown step mode: expected 'row', 'quadrant', or 'color'.")
