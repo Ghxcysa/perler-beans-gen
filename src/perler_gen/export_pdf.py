@@ -3,11 +3,11 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from io import BytesIO
-from typing import Iterable
+from typing import Iterable, Literal
 
 import numpy as np
 from PIL import Image
-from reportlab.lib.pagesizes import letter
+from reportlab.lib.pagesizes import landscape, letter
 from reportlab.lib.units import inch
 from reportlab.lib.utils import ImageReader
 from reportlab.pdfgen import canvas
@@ -150,17 +150,45 @@ def _draw_symbols(
             c.drawString(x, y, symbol)
 
 
-def _legend_entries(quantized: QuantizeResult) -> list[tuple[str, str, str, int]]:
+def _legend_entries(quantized: QuantizeResult) -> list[tuple[str, str, str, int, tuple[int, int, int]]]:
     counts = compute_counts(quantized.indices, quantized.palette)
     count_map = {entry.code: entry.count for entry in counts}
-    entries: list[tuple[str, str, str, int]] = []
+    entries: list[tuple[str, str, str, int, tuple[int, int, int]]] = []
     for idx, color in enumerate(quantized.palette.colors):
         count = count_map.get(color.code, 0)
         if count <= 0:
             continue
         symbol = index_to_number(idx)
-        entries.append((symbol, color.code, color.name, count))
+        entries.append((symbol, color.code, color.name, count, color.rgb))
     return entries
+
+
+def _draw_legend_column_headers(
+    c: canvas.Canvas,
+    col_x: list[float],
+    start_y: float,
+) -> None:
+    c.setFont("Helvetica-Bold", 10)
+    c.drawString(col_x[0], start_y, "No.")
+    c.drawString(col_x[1], start_y, "Code")
+    c.drawString(col_x[2], start_y, "Name")
+    c.drawString(col_x[3], start_y, "Count")
+
+
+def _draw_legend_swatch(
+    c: canvas.Canvas,
+    x: float,
+    baseline_y: float,
+    rgb: tuple[int, int, int],
+    size: float,
+) -> None:
+    """Draw a filled swatch with a light border so pale colors stay visible."""
+    bottom = baseline_y - 0.35 * size
+    r, g, b = rgb[0] / 255.0, rgb[1] / 255.0, rgb[2] / 255.0
+    c.setFillColorRGB(r, g, b)
+    c.setStrokeColorRGB(0.55, 0.55, 0.55)
+    c.setLineWidth(0.25)
+    c.rect(x, bottom, size, size, fill=1, stroke=1)
 
 
 def write_pattern_pdf(
@@ -169,6 +197,7 @@ def write_pattern_pdf(
     quantized: QuantizeResult,
     steps: Iterable[Step],
     grid_interval: int = 5,
+    step_orientation: Literal["portrait", "landscape"] = "landscape",
 ) -> None:
     page_w, page_h = letter
     c = canvas.Canvas(out_path, pagesize=letter)
@@ -186,38 +215,58 @@ def write_pattern_pdf(
     bio.seek(0)
     img_reader = ImageReader(bio)
     img_x = 0.75 * inch
-    img_y = page_h - 5.0 * inch
-    c.drawImage(img_reader, img_x, img_y, width=3.5 * inch, preserveAspectRatio=True, mask='auto')
+    img_y = page_h - 5.5 * inch
+    c.drawImage(img_reader, img_x, img_y, width=4.25 * inch, preserveAspectRatio=True, mask="auto")
     c.showPage()
 
-    # Legend page
-    c.setFont("Helvetica-Bold", 16)
-    c.drawString(0.75 * inch, page_h - 1.0 * inch, "Legend")
-    c.setFont("Helvetica", 10)
+    # Legend page(s)
+    margin_x = 0.75 * inch
+    swatch_size = 11.0
+    x_no = margin_x
+    x_swatch = margin_x + 34
+    x_code = x_swatch + swatch_size + 10
+    x_name = 3.25 * inch
+    x_count = 5.35 * inch
+    col_x = [x_no, x_code, x_name, x_count]
     start_y = page_h - 1.5 * inch
-    line_h = 14
-    col_x = [0.75 * inch, 2.0 * inch, 3.2 * inch, 5.2 * inch]
-    c.drawString(col_x[0], start_y, "No.")
-    c.drawString(col_x[1], start_y, "Code")
-    c.drawString(col_x[2], start_y, "Name")
-    c.drawString(col_x[3], start_y, "Count")
+    line_h = 16
+
+    c.setFont("Helvetica-Bold", 16)
+    c.drawString(margin_x, page_h - 1.0 * inch, "Legend")
+    c.setFont("Helvetica", 10)
+    _draw_legend_column_headers(c, col_x, start_y)
     y = start_y - line_h
-    for symbol, code, name, count in entries:
+    for symbol, code, name, count, rgb in entries:
+        c.setFont("Helvetica", 10)
         c.drawString(col_x[0], y, symbol)
+        _draw_legend_swatch(c, x_swatch, y, rgb, swatch_size)
         c.drawString(col_x[1], y, code)
         c.drawString(col_x[2], y, name)
         c.drawString(col_x[3], y, str(count))
         y -= line_h
         if y < 1.0 * inch:
             c.showPage()
+            c.setFont("Helvetica-Bold", 16)
+            c.drawString(margin_x, page_h - 1.0 * inch, "Legend (cont.)")
             c.setFont("Helvetica", 10)
-            y = page_h - 1.0 * inch
+            _draw_legend_column_headers(c, col_x, start_y)
+            y = start_y - line_h
     c.showPage()
 
-    # Step pages
+    # Step pages (optionally landscape for larger cells)
+    if step_orientation == "landscape":
+        step_pagesize = landscape(letter)
+        c.setPageSize(step_pagesize)
+        page_w, page_h = step_pagesize
+    elif step_orientation == "portrait":
+        page_w, page_h = letter
+    else:
+        raise ValueError(f"step_orientation must be 'portrait' or 'landscape', got {step_orientation!r}")
+
     margin = 0.5 * inch
+    title_reserve = 2.0 * inch
     grid_area_w = page_w - 2 * margin
-    grid_area_h = page_h - 2.5 * inch
+    grid_area_h = page_h - title_reserve
     cell = min(grid_area_w / meta.grid_w, grid_area_h / meta.grid_h)
     origin_x = margin
     origin_y = margin

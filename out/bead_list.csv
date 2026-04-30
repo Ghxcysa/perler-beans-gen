@@ -1,12 +1,14 @@
 color_code,color_name,count
-P01,White,71
-P02,Black,233
-P03,Light Gray,24
-P04,Dark Gray,29
-P06,Orange,211
-P07,Yellow,1554
-P16,Brown,102
-P17,Tan,3
-P18,Beige,11
-P22,Maroon,9
-P23,Olive,57
+H01,White,24
+H02,Cream,925
+H03,Yellow,8
+H14,Transparent Yellow,2
+H16,Transparent Green,176
+H17,Grey,2
+H18,Black,37
+H19,Clear,11
+H28,Dark Green,18
+H29,Claret,44
+H30,Burgundy,10
+H32,Neon Fuchsia,1019
+H43,Pastel Yellow,28

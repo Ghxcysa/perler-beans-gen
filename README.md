@@ -9,13 +9,14 @@ Perler-Gen converts a single image into a printable Perler bead pattern with ste
 
 ## Features
 - Load a single JPG/PNG
-- Resample to a fixed grid (e.g. 48x48)
-- Quantize colors to a fixed palette (nearest neighbor in RGB)
+- Normalize EXIF orientation and transparent PNG backgrounds
+- Denoise, resample to a fixed grid (e.g. 48x48), and clean isolated speckles
+- Quantize colors to a fixed palette with perceptual LAB/Delta E matching
 - Export `pattern.pdf` (cover, legend, step pages), `preview.png`, `bead_list.csv`, optional SVG
 
 ## Requirements
 - Python 3.10+
-- Dependencies: Pillow, numpy, reportlab
+- Dependencies: Pillow, numpy, reportlab, scikit-image
 
 Install:
 ```
@@ -29,7 +30,7 @@ python3 -m perler_gen.cli \
   --input /Users/xiaorui/Desktop/3cdc5129eb5fc3e89545cd99b4ecb309.jpg \
   --outdir out --grid 48 48 --max-colors 24 \
   --steps color \
-  --export-svg --pre-smooth 1.5
+  --export-svg
 ```
 
 Output files:
@@ -43,9 +44,16 @@ Output files:
 - `--grid W H`: grid size
 - `--max-colors`: maximum number of colors (default 24)
 - `--palette`: palette JSON file
-- `--steps`: `row` or `quadrant`
+- `--steps`: `row`, `quadrant`, or `color`
 - `--rows-per-step`: rows per step (row mode)
 - `--export-svg`: export `pattern.svg`
+- `--denoise`: median denoise passes before downsampling (default 1)
+- `--resample`: `cell-dominant` (default) or `lanczos`
+- `--post-smooth`: palette-index cleanup passes after matching (default 1)
+- `--post-smooth-mode`: `speckle` (default), `standard`, or `conservative`
+- `--speckle-size`: largest tiny color island cleaned in `speckle` mode (default 2)
+- `--alpha-background`: background color for transparent PNGs, such as `#ffffff`
+- `--dither`: optional preview/SVG dithering; leave off for clean no-noise output
 
 ## Palette Format
 Example:
@@ -64,7 +72,4 @@ Run tests with:
 ```
 pytest
 ```
-
-
-
 
