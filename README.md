@@ -55,6 +55,9 @@ Output files:
 - `--alpha-background`: background color for transparent PNGs, such as `#ffffff`
 - `--dither`: optional preview/SVG dithering; leave off for clean no-noise output
 
+Numeric CLI options are validated before generation starts, so invalid values
+such as zero-sized grids or negative denoise passes fail with a clear message.
+
 ## Palette Format
 Example:
 ```json
@@ -72,4 +75,3 @@ Run tests with:
 ```
 pytest
 ```
-

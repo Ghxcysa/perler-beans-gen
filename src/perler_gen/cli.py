@@ -32,14 +32,33 @@ def _parse_rgb(value: str) -> tuple[int, int, int]:
     raise argparse.ArgumentTypeError("Use '#rrggbb' or 'r,g,b'.")
 
 
+def _non_negative_int(value: str) -> int:
+    """Parse a CLI integer that must be zero or greater."""
+    try:
+        parsed = int(value)
+    except ValueError as exc:
+        raise argparse.ArgumentTypeError(f"Expected an integer, got {value!r}.") from exc
+    if parsed < 0:
+        raise argparse.ArgumentTypeError("Expected a value >= 0.")
+    return parsed
+
+
+def _positive_int(value: str) -> int:
+    """Parse a CLI integer that must be greater than zero."""
+    parsed = _non_negative_int(value)
+    if parsed == 0:
+        raise argparse.ArgumentTypeError("Expected a value > 0.")
+    return parsed
+
+
 def _parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Perler-Gen: Image to perler bead pattern.")
     parser.add_argument("--input", required=True, help="Input image path (jpg/png).")
     parser.add_argument("--outdir", required=True, help="Output directory.")
-    parser.add_argument("--grid", nargs=2, type=int, metavar=("W", "H"), default=[48, 48])
+    parser.add_argument("--grid", nargs=2, type=_positive_int, metavar=("W", "H"), default=[48, 48])
     parser.add_argument(
         "--max-colors",
-        type=int,
+        type=_positive_int,
         default=24,
         help="Greedy palette reduction: keep only the top-N most matched full-palette "
              "colors before final match. Lower values simplify shopping lists but can "
@@ -49,7 +68,7 @@ def _parse_args() -> argparse.Namespace:
     parser.add_argument("--steps", choices=["row", "quadrant", "color"], default="row",
                         help="Step mode: 'row' (N rows per step), 'quadrant' (4 quadrants), "
                              "or 'color' (one step per palette color, matching SVG numbering).")
-    parser.add_argument("--rows-per-step", type=int, default=2)
+    parser.add_argument("--rows-per-step", type=_positive_int, default=2)
     parser.add_argument("--export-svg", action="store_true")
     parser.add_argument(
         "--dither",
@@ -68,7 +87,7 @@ def _parse_args() -> argparse.Namespace:
     )
     parser.add_argument(
         "--denoise",
-        type=int,
+        type=_non_negative_int,
         default=1,
         metavar="N",
         help="Median denoise passes before downsampling (default: 1). Use 0 to keep every "
@@ -93,7 +112,7 @@ def _parse_args() -> argparse.Namespace:
     )
     parser.add_argument(
         "--post-smooth",
-        type=int,
+        type=_non_negative_int,
         default=1,
         metavar="N",
         help="Majority-vote denoise passes on palette indices after match (0 = off). "
@@ -113,7 +132,7 @@ def _parse_args() -> argparse.Namespace:
     )
     parser.add_argument(
         "--speckle-size",
-        type=int,
+        type=_positive_int,
         default=2,
         metavar="N",
         help="Largest same-color connected island cleaned by --post-smooth-mode speckle "
@@ -126,7 +145,7 @@ def _parse_args() -> argparse.Namespace:
              "greedy color-frequency reduction so colors that appear on strong boundaries "
              "are less likely to be dropped.",
     )
-    parser.add_argument("--grid-interval", type=int, default=5, metavar="N",
+    parser.add_argument("--grid-interval", type=_positive_int, default=5, metavar="N",
                         help="Draw bold major grid lines every N cells (default: 5).")
     parser.add_argument(
         "--pdf-step-orientation",
